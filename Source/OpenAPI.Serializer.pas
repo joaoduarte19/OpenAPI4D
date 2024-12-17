@@ -40,9 +40,9 @@ type
     function TryGetOpenAPIField(const AMember: TRttiMember; out AOpenAPIFieldName: string): Boolean;
     procedure ObjectToJsonObject(const AObject: TObject; const AJsonObject: TJSONObject);
     procedure TValueToJsonObjectField(const AValue: TValue; const AJsonObject: TJSONObject; const AFieldName: string);
-    procedure NullableValueToJSONObjetField(const AValue: TValue; const AJsonObject: TJSONObject; const AFieldName: string);
+    procedure NullableValueToJSONObjectField(const AValue: TValue; const AJsonObject: TJSONObject; const AFieldName: string);
     function ObjectToJsonValue(const AObject: TObject): TJSONValue;
-    procedure OpenAPIObjecTMapToJSONObject(const AObject; const AJsonObject: TJSONObject);
+    procedure OpenAPIObjectMapToJSONObject(const AObject; const AJsonObject: TJSONObject);
     function IsOpenAPIObjectMap(const AObject: TObject): Boolean;
     function IsObjectList(const AObject: TObject): Boolean;
   public
@@ -55,6 +55,7 @@ type
 implementation
 
 uses
+  OpenAPI.Path,
   OpenAPI.Types,
   System.DateUtils,
   System.Generics.Collections;
@@ -71,28 +72,33 @@ begin
   FRttiContext.Free;
 end;
 
-procedure TOpenAPISerializer.NullableValueToJSONObjetField(const AValue: TValue; const AJsonObject: TJSONObject; const AFieldName: string);
+procedure TOpenAPISerializer.NullableValueToJSONObjectField(const AValue: TValue; const AJsonObject: TJSONObject; const AFieldName: string);
 begin
   if AValue.TypeInfo = TypeInfo(Nullable<string>) then
   begin
-    if AValue.AsType < Nullable < string >>.HasValue then
-      AJsonObject.AddPair(AFieldName, AValue.AsType < Nullable < string >>.Value)
+    if AValue.AsType<Nullable<string>>.HasValue then
+      AJsonObject.AddPair(AFieldName, AValue.AsType<Nullable<string>>.Value)
   end
   else if AValue.TypeInfo = TypeInfo(Nullable<Boolean>) then
   begin
-    if AValue.AsType < Nullable < Boolean >>.HasValue then
-      AJsonObject.AddPair(AFieldName, TJSONBool.Create(AValue.AsType < Nullable < Boolean >>.Value))
+    if AValue.AsType<Nullable<Boolean>>.HasValue then
+      AJsonObject.AddPair(AFieldName, TJSONBool.Create(AValue.AsType<Nullable<Boolean>>.Value))
   end
   else if AValue.TypeInfo = TypeInfo(Nullable<Integer>) then
   begin
-    if AValue.AsType < Nullable < Integer >>.HasValue then
-      AJsonObject.AddPair(AFieldName, TJSONNumber.Create(AValue.AsType < Nullable < Integer >>.Value))
+    if AValue.AsType<Nullable<Integer>>.HasValue then
+      AJsonObject.AddPair(AFieldName, TJSONNumber.Create(AValue.AsType<Nullable<Integer>>.Value))
   end
   else if AValue.TypeInfo = TypeInfo(Nullable<Double>) then
   begin
-    if AValue.AsType < Nullable < Double >>.HasValue then
-      AJsonObject.AddPair(AFieldName, TJSONNumber.Create(AValue.AsType < Nullable < Double >>.Value))
+    if AValue.AsType<Nullable<Double>>.HasValue then
+      AJsonObject.AddPair(AFieldName, TJSONNumber.Create(AValue.AsType<Nullable<Double>>.Value))
   end
+  else if AValue.TypeInfo = TypeInfo(Nullable<TOpenAPIParameter.TLocation>) then
+  begin
+    if AValue.AsType<Nullable<TOpenAPIParameter.TLocation>>.HasValue then
+      AJsonObject.AddPair(AFieldName, AValue.AsType<Nullable<TOpenAPIParameter.TLocation>>.Value.AsString);
+  end;
 end;
 
 function TOpenAPISerializer.TryGetOpenAPIField(const AMember: TRttiMember; out AOpenAPIFieldName: string): Boolean;
@@ -131,7 +137,8 @@ begin
       AJsonObject.AddPair(AFieldName, TJSONNumber.Create(AValue.AsInt64));
 
     tkChar, tkString, tkWChar, tkLString, tkWString, tkUString:
-      AJsonObject.AddPair(AFieldName, AValue.AsString);
+      if not AValue.AsString.IsEmpty then
+        AJsonObject.AddPair(AFieldName, AValue.AsString);
 
     tkFloat:
       begin
@@ -146,8 +153,6 @@ begin
         else
           AJsonObject.AddPair(AFieldName, TJSONNumber.Create(AValue.AsExtended));
       end;
-    tkEnumeration:
-      ;
     tkClass:
       begin
         LChildObject := AValue.AsObject;
@@ -157,8 +162,8 @@ begin
       end;
     tkArray:
       ;
-    tkRecord:
-      NullableValueToJSONObjetField(AValue, AJsonObject, AFieldName);
+    tkEnumeration, tkRecord:
+      NullableValueToJSONObjectField(AValue, AJsonObject, AFieldName);
     tkInterface:
       ;
   end;
@@ -233,7 +238,7 @@ begin
   if IsOpenAPIObjectMap(AObject) then
   begin
     Result := TJSONObject.Create;
-    OpenAPIObjecTMapToJSONObject(AObject, TJSONObject(Result));
+    OpenAPIObjectMapToJSONObject(AObject, TJSONObject(Result));
   end
   else if IsObjectList(AObject) then
   begin
@@ -271,7 +276,7 @@ begin
   end;
 end;
 
-procedure TOpenAPISerializer.OpenAPIObjecTMapToJSONObject(const AObject; const AJsonObject: TJSONObject);
+procedure TOpenAPISerializer.OpenAPIObjectMapToJSONObject(const AObject; const AJsonObject: TJSONObject);
 var
   LObjectMap: TOpenAPIObjectMap<TObject>;
   LKey: string;
