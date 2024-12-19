@@ -343,18 +343,26 @@ type
   TOpenAPIParameter = class
   public type
     TLocation = (Query, Header, Path, Cookie);
+
+    TLocationHelper = record helper for TLocation
+      function AsString: string;
+    end;
+
   private
+    [OpenAPIField('$ref')]
+    FRef: Nullable<string>;
+
     [OpenAPIField('name')]
     FName: string;
 
     [OpenAPIField('in')]
-    FIn: TLocation;
+    FIn: Nullable<TLocation>;
 
     [OpenAPIField('description')]
     FDescription: Nullable<string>;
 
     [OpenAPIField('required')]
-    FRequired: Boolean;
+    FRequired: Nullable<Boolean>;
 
     [OpenAPIField('deprecated')]
     FDeprecated: Nullable<Boolean>;
@@ -380,6 +388,11 @@ type
     constructor Create;
     destructor Destroy; override;
     /// <summary>
+    /// Reference Object
+    /// REQUIRED. The reference identifier. This MUST be in the form of a URI.
+    /// </summary>
+    property Ref: Nullable<string> read FRef write FRef;
+    /// <summary>
     /// REQUIRED. The name of the parameter. Parameter names are case sensitive.
     /// If in is "path", the name field MUST correspond to a template expression occurring within the path field in the Paths Object.
     /// If in is "header" and the name field is "Accept", "Content-Type" or "Authorization", the parameter definition SHALL be ignored.
@@ -389,7 +402,7 @@ type
     /// <summary>
     /// REQUIRED. The location of the parameter. Possible values are "query", "header", "path" or "cookie".
     /// </summary>
-    property &In: TLocation read FIn write FIn;
+    property &In: Nullable<TLocation> read FIn write FIn;
     /// <summary>
     /// A brief description of the parameter. This could contain examples of use. CommonMark syntax MAY be used for rich text representation.
     /// </summary>
@@ -398,7 +411,7 @@ type
     /// Determines whether this parameter is mandatory. If the parameter location is "path", this property is REQUIRED and its value MUST be true.
     /// Otherwise, the property MAY be included and its default value is false.
     /// </summary>
-    property Required: Boolean read FRequired write FRequired;
+    property Required: Nullable<Boolean> read FRequired write FRequired;
     /// <summary>
     /// Specifies that a parameter is deprecated and SHOULD be transitioned out of usage. Default value is false.
     /// </summary>
@@ -1050,6 +1063,15 @@ begin
   if not Assigned(FSchema) then
     FSchema := TOpenAPISchema.Create;
   Result := FSchema;
+end;
+
+{ TOpenAPIParameter.TLocationHelper }
+
+function TOpenAPIParameter.TLocationHelper.AsString: string;
+const
+  cLocationNames: array[TLocation] of string = ('query', 'header', 'path', 'cookie');
+begin
+  Result := cLocationNames[Self];
 end;
 
 { TOpenAPIMediaType }
